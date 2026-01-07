@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>T-Rex T-Catch</title>
+    <link href="https://fonts.googleapis.com/css2?family=Alata&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; font-family: 'Alata', sans-serif;
+            touch-action: none; background: #000;
+        }
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: url('background.png') no-repeat center center;
+            background-size: cover;
+        }
+        canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+        #score-board {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            font-size: 32px; color: white; background: rgba(26, 35, 126, 0.8);
+            padding: 10px 20px; border-radius: 50px; border: 3px solid #fff; display: none;
+        }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 200; display: flex; justify-content: center; align-items: center;
+        }
+        #start-screen {
+            pointer-events: auto; background: white; padding: 30px;
+            border-radius: 40px; border: 8px solid #1a237e; text-align: center;
+        }
+        .btn {
+            background: #d32f2f; color: white; border: none; padding: 15px 40px;
+            font-size: 28px; border-radius: 50px; cursor: pointer; font-family: inherit;
+        }
+        .feedback {
+            position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
+            font-size: 60px; font-weight: bold; opacity: 0; z-index: 150; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="score-board">Score: 0</div>
+    <div id="ui-layer">
+        <div id="start-screen">
+            <h1 style="color:#d32f2f; margin:0;">T-REX HERO</h1>
+            <p>Catch the "T" words!</p>
+            <button class="btn" onclick="startGame()">START GAME</button>
+        </div>
+    </div>
+    <div id="pop-t" class="feedback" style="color: #ffd600; text-shadow: 4px 4px 0 #d32f2f;">T!</div>
+    <div id="pop-oops" class="feedback" style="color: #d32f2f; text-shadow: 3px 3px 0 #1a237e;">Oops! Not a T!</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreBoard = document.getElementById('score-board');
+
+// 1. ASSET LOADING
+const assets = {
+    dino: new Image(),
+    tree: new Image(),
+    tiger: new Image(),
+    table: new Image(),
+    cake: new Image(),
+    car: new Image(),
+    dog: new Image(),
+    tSound: new Audio('t-sound.mp3'),
+    ohohSound: new Audio('ohoh-sound.mp3')
+};
+
+assets.dino.src = 'dinosaur.png';
+assets.tree.src = 'tree.png';
+assets.tiger.src = 'tiger.png';
+assets.table.src = 'table.png';
+assets.cake.src = 'cake.png';
+assets.car.src = 'car.png';
+assets.dog.src = 'dog.png';
+
+let gameActive = false;
+let score = 0;
+let inputX = window.innerWidth / 2;
+let objects = [];
+let lastTime = 0;
+
+const rex = { x: 0, y: 0, w: 150, h: 180, wiggle: 0 };
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    rex.y = canvas.height - rex.h - 50;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const move = (e) => { inputX = e.touches ? e.touches[0].clientX : e.clientX; };
+window.addEventListener('mousemove', move);
+window.addEventListener('touchstart', move);
+window.addEventListener('touchmove', move);
+
+function startGame() {
+    document.getElementById('ui-layer').style.display = 'none';
+    scoreBoard.style.display = 'block';
+    gameActive = true;
+    requestAnimationFrame(gameLoop);
+}
+
+function showFeedback(id) {
+    const el = document.getElementById(id);
+    el.style.opacity = "1";
+    setTimeout(() => { el.style.opacity = "0"; }, 800);
+}
+
+function gameLoop(t) {
+    if (!gameActive) return;
+    const dt = t - lastTime; lastTime = t;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Movement
+    rex.x += (inputX - rex.w / 2 - rex.x) * 0.2;
+
+    // Spawn items
+    if (Math.random() < 0.02) {
+        const isT = Math.random() > 0.5;
+        const tPool = [assets.tree, assets.tiger, assets.table];
+        const otherPool = [assets.cake, assets.car, assets.dog];
+        const selectedImg = isT ? tPool[Math.floor(Math.random()*tPool.length)] : otherPool[Math.floor(Math.random()*otherPool.length)];
+        
+        objects.push({
+            x: Math.random() * (canvas.width - 80) + 40,
+            y: -80,
+            img: selectedImg,
+            isT: isT,
+            s: 4 + Math.random() * 3
+        });
+    }
+
+    // Draw and Update Items
+    objects.forEach((o, i) => {
+        o.y += o.s;
+        ctx.drawImage(o.img, o.x - 40, o.y - 40, 80, 80);
+        
+        const d = Math.hypot(o.x - (rex.x + rex.width/2), o.y - (rex.y + 40));
+        if (Math.hypot(o.x - (rex.x + rex.w/2), o.y - (rex.y + 50)) < 80) {
+            if (o.isT) {
+                score++;
+                showFeedback('pop-t');
+                assets.tSound.currentTime = 0;
+                assets.tSound.play().catch(()=>{});
+            } else {
+                score = Math.max(0, score - 1);
+                showFeedback('pop-oops');
+                assets.ohohSound.currentTime = 0;
+                assets.ohohSound.play().catch(()=>{});
+            }
+            scoreBoard.innerText = "Score: " + score;
+            objects.splice(i, 1);
+        } else if (o.y > canvas.height) objects.splice(i, 1);
+    });
+
+    // Draw Dino
+    ctx.drawImage(assets.dino, rex.x, rex.y, rex.w, rex.h);
+
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>

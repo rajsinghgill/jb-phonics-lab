@@ -123,23 +123,18 @@
 <body>
 
     <div id="game-wrapper">
-        <!-- Score UI -->
-        <!-- Start hidden so it doesn't show on title screen -->
         <div id="ui-layer" class="hidden">
             <div id="score-display">Score: 0</div>
         </div>
 
-        <!-- The Game Canvas -->
         <canvas id="gameCanvas"></canvas>
 
-        <!-- Start Screen Overlay -->
         <div id="start-screen" class="overlay">
             <h1>Hungry Snake</h1>
             <p>Use Arrow Keys ⬅️⬆️⬇️➡️ to move.<br>Eat the <strong>/ch/</strong> sounds!</p>
             <button id="start-btn">Play!</button>
         </div>
 
-        <!-- Game Over Overlay -->
         <div id="game-over-screen" class="overlay hidden">
             <h1 style="color: #ef5350;">Good Try!</h1>
             <p>You found <span id="final-score">0</span> /ch/ sounds.</p>
@@ -242,7 +237,7 @@
             const startY = Math.floor(tileCountY / 2);
 
             snake = [
-                { x: startX, y: startY },     // Head
+                { x: startX, y: startY },      // Head
                 { x: startX - 1, y: startY }, // Body
                 { x: startX - 2, y: startY }  // Tail
             ];
@@ -261,6 +256,9 @@
             
             // Start the tick
             gameInterval = setInterval(gameLoop, GAME_SPEED);
+            
+            // Force focus to window so keys work immediately
+            window.focus();
         }
 
         function gameLoop() {
@@ -408,7 +406,14 @@
         
         // Keyboard
         document.addEventListener('keydown', (evt) => {
+            // FIX: Prevent default browser scrolling when arrow keys or space are pressed
+            const keysToBlock = [32, 37, 38, 39, 40]; // Space, Left, Up, Right, Down
+            if (keysToBlock.includes(evt.keyCode)) {
+                evt.preventDefault();
+            }
+
             if(!isGameRunning) return;
+
             switch(evt.keyCode) {
                 case 37: if(velocityX !== 1) { velocityX = -1; velocityY = 0; } break; // Left
                 case 38: if(velocityY !== 1) { velocityX = 0; velocityY = -1; } break; // Up

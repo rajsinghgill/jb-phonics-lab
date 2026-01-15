@@ -15,14 +15,14 @@
             overflow: hidden; 
             font-family: 'Alata', sans-serif;
             touch-action: none; 
-            background: transparent; /* Transparent to blend with React */
+            background: transparent; /* Transparent to blend with React container */
             user-select: none;
         }
 
         #game-container {
             position: relative; 
-            width: 100%; 
-            height: 100%;
+            width: 100vw; 
+            height: 100vh;
             overflow: hidden;
         }
 
@@ -31,7 +31,6 @@
             top: 0; 
             left: 0; 
             z-index: 5; 
-            display: block;
         }
 
         /* UI OVERLAYS */
@@ -157,6 +156,7 @@
         crash: new Audio('ohoh-sound.mp3')
     };
 
+    // Preload
     for(let key in sounds) {
         sounds[key].volume = 0.5;
         sounds[key].preload = 'auto';
@@ -164,12 +164,23 @@
 
     function playSound(name) {
         try {
-            const s = sounds[name].cloneNode();
-            s.volume = 0.5;
-            s.play().catch(() => {});
+            // Simple play without complex cloning to prevent errors
+            sounds[name].currentTime = 0;
+            sounds[name].play().catch(() => {});
         } catch(e) {}
     }
 
+    // --- DYNAMIC RESIZE LOGIC (MATCHING T-REX) ---
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Keep bird in bounds on resize
+        if(bird.y > canvas.height - CONFIG.groundHeight) {
+            bird.y = canvas.height - CONFIG.groundHeight - bird.radius;
+        }
+    }
+    window.addEventListener('resize', resize);
+    
     // --- CONFIGURATION ---
     const CONFIG = {
         gravity: 1100,
@@ -187,22 +198,10 @@
         spawnTimer: 0
     };
 
-    // --- RESIZE LOGIC (MATCHING T-REX GAME) ---
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        // Keep bird in bounds on resize
-        if(bird.y > canvas.height - CONFIG.groundHeight) {
-            bird.y = canvas.height - CONFIG.groundHeight - bird.radius;
-        }
-    }
-    window.addEventListener('resize', resize);
-    resize(); 
-
     // --- Game Objects ---
 
     const bird = {
-        x: 100,
+        x: 100, // Fixed relative to left side
         y: 300,
         radius: 25,
         hitbox: 20,
@@ -283,7 +282,7 @@
                 const h = Math.floor(Math.random() * (maxPipe - minPipe + 1)) + minPipe;
                 
                 this.items.push({
-                    x: canvas.width, 
+                    x: canvas.width, // Spawn offscreen right
                     top: h,
                     passed: false
                 });
@@ -321,9 +320,10 @@
         clouds: [],
         
         init: function() {
+            // Init with default width, will update on loop
             for(let i=0; i<5; i++) {
                 this.clouds.push({
-                    x: Math.random() * canvas.width,
+                    x: Math.random() * 800,
                     y: Math.random() * 300,
                     size: 0.5 + Math.random() * 0.5,
                     speed: 20 + Math.random() * 30
@@ -334,162 +334,4 @@
         draw: function() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Sky
-            ctx.fillStyle = "#87CEEB"; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Clouds
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-            this.clouds.forEach(c => {
-                ctx.beginPath();
-                ctx.arc(c.x, c.y, 40 * c.size, 0, Math.PI*2);
-                ctx.arc(c.x + 30*c.size, c.y - 15*c.size, 45*c.size, 0, Math.PI*2);
-                ctx.arc(c.x + 60*c.size, c.y, 40*c.size, 0, Math.PI*2);
-                ctx.fill();
-            });
-
-            // Draw Hills
-            ctx.fillStyle = "#90EE90"; 
-            ctx.beginPath();
-            ctx.moveTo(0, canvas.height - CONFIG.groundHeight);
-            
-            const time = Date.now() / 1000; 
-            for (let x = 0; x <= canvas.width; x++) {
-                let y = (canvas.height - CONFIG.groundHeight - 50) + 
-                        Math.sin((x * 0.01) + (time * 2)) * 20;
-                ctx.lineTo(x, y);
-            }
-            ctx.lineTo(canvas.width, canvas.height);
-            ctx.lineTo(0, canvas.height);
-            ctx.fill();
-
-            // Foreground Ground
-            ctx.fillStyle = "#4CAF50"; 
-            ctx.fillRect(0, canvas.height - CONFIG.groundHeight, canvas.width, CONFIG.groundHeight);
-            
-            // Grass strip
-            ctx.fillStyle = "#66BB6A";
-            ctx.fillRect(0, canvas.height - CONFIG.groundHeight, canvas.width, 15);
-        },
-
-        update: function(dt) {
-            this.clouds.forEach(c => {
-                c.x -= c.speed * dt;
-                if(c.x < -100) c.x = canvas.width + 100;
-            });
-        }
-    };
-
-    function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke) {
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke(); }
-    }
-
-    // --- GAME CONTROL ---
-
-    function startGame() {
-        // Removed the AudioContext check that was causing the crash
-        bird.y = 300;
-        bird.velocity = 0;
-        pipes.items = [];
-        state.score = 0;
-        state.spawnTimer = 0;
-        state.current = 'PLAYING';
-        state.lastTime = performance.now();
-
-        scoreHud.innerText = "0";
-        scoreHud.style.display = 'block';
-        startScreen.classList.add('hidden');
-        gameOverScreen.classList.add('hidden');
-
-        bird.jump();
-    }
-
-    function triggerGameOver() {
-        if (state.current === 'GAMEOVER') return;
-        state.current = 'GAMEOVER';
-        playSound('crash');
-
-        if (state.score > state.highScore) {
-            state.highScore = state.score;
-            localStorage.setItem('super_a_highscore', state.highScore);
-        }
-
-        finalScoreEl.innerText = state.score;
-        bestScoreEl.innerText = state.highScore;
-        scoreHud.style.display = 'none';
-        
-        setTimeout(() => {
-            gameOverScreen.classList.remove('hidden');
-        }, 300);
-    }
-
-    function resetGame() {
-        startGame();
-    }
-
-    function inputHandler(e) {
-        if (e.type === 'keydown' && e.code === 'Space') e.preventDefault();
-        if (e.type === 'keydown' && e.code !== 'Space') return;
-        
-        if (state.current === 'PLAYING') {
-            bird.jump();
-        } else if (state.current === 'START' && (e.code === 'Space' || e.type === 'mousedown')) {
-            startGame();
-        }
-    }
-
-    function loop(timestamp) {
-        const dt = (timestamp - state.lastTime) / 1000;
-        state.lastTime = timestamp;
-        const safeDt = Math.min(dt, 0.1);
-
-        background.draw();
-        
-        if (state.current === 'PLAYING') {
-            background.update(safeDt);
-            pipes.update(safeDt);
-            pipes.draw();
-            bird.update(safeDt);
-            bird.draw();
-        } else if (state.current === 'START') {
-            background.update(safeDt); 
-        } else if (state.current === 'GAMEOVER') {
-            pipes.draw(); 
-            if (bird.y < canvas.height - CONFIG.groundHeight - bird.hitbox) {
-                bird.y += 500 * safeDt; 
-                bird.draw();
-            } else {
-                bird.y = canvas.height - CONFIG.groundHeight - bird.hitbox;
-                bird.draw();
-            }
-        }
-        requestAnimationFrame(loop);
-    }
-
-    background.init();
-    
-    window.addEventListener('keydown', inputHandler);
-    canvas.addEventListener('mousedown', (e) => {
-        if(state.current === 'PLAYING') inputHandler({type: 'mousedown'});
-    });
-
-    document.fonts.ready.then(() => {
-        state.lastTime = performance.now();
-        requestAnimationFrame(loop);
-    });
-
-</script>
-</body>
-</html>
+            // Sky (Handled by CSS in React, but we

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Super 'a' Jump!</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super 'a' Jump!</title>
     <link href="https://fonts.googleapis.com/css2?family=Alata&display=swap" rel="stylesheet">
     <style>
-        /* EXACT T-REX STYLE LAYOUT LOGIC */
+        /* EXACT T-REX STYLE LAYOUT */
         body, html {
             margin: 0; 
             padding: 0; 
@@ -15,7 +15,7 @@
             overflow: hidden; 
             font-family: 'Alata', sans-serif;
             touch-action: none; 
-            background: transparent; /* Transparent so it blends with React container */
+            background: transparent; /* Transparent to blend with React */
             user-select: none;
         }
 
@@ -56,9 +56,9 @@
             pointer-events: none;
         }
 
-        /* TYPOGRAPHY MATCHING T-REX STYLE */
+        /* TYPOGRAPHY */
         h1 {
-            font-size: 60px; /* Scaled slightly for better fit */
+            font-size: 60px;
             color: #FF5722;
             text-shadow: 4px 4px 0 #FFFFFF;
             margin: 0 0 20px 0;
@@ -170,8 +170,7 @@
         } catch(e) {}
     }
 
-    // --- DYNAMIC CONFIGURATION ---
-    // We remove fixed width/height and use the canvas dimensions
+    // --- CONFIGURATION ---
     const CONFIG = {
         gravity: 1100,
         jump: -450,
@@ -188,22 +187,22 @@
         spawnTimer: 0
     };
 
-    // --- RESIZE LOGIC (FROM T-REX GAME) ---
+    // --- RESIZE LOGIC (MATCHING T-REX GAME) ---
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        // Reset bird y if it falls out of bounds during resize
+        // Keep bird in bounds on resize
         if(bird.y > canvas.height - CONFIG.groundHeight) {
             bird.y = canvas.height - CONFIG.groundHeight - bird.radius;
         }
     }
     window.addEventListener('resize', resize);
-    resize(); // Call immediately
+    resize(); 
 
     // --- Game Objects ---
 
     const bird = {
-        x: 100, // Fixed relative to left side
+        x: 100,
         y: 300,
         radius: 25,
         hitbox: 20,
@@ -232,7 +231,7 @@
             this.velocity += CONFIG.gravity * dt;
             this.y += this.velocity * dt;
 
-            // Ground Collision (Using dynamic canvas.height)
+            // Ground Collision
             if (this.y + this.hitbox >= canvas.height - CONFIG.groundHeight) {
                 this.y = canvas.height - CONFIG.groundHeight - this.hitbox;
                 triggerGameOver();
@@ -284,7 +283,7 @@
                 const h = Math.floor(Math.random() * (maxPipe - minPipe + 1)) + minPipe;
                 
                 this.items.push({
-                    x: canvas.width, // Spawn offscreen right (using dynamic width)
+                    x: canvas.width, 
                     top: h,
                     passed: false
                 });
@@ -335,7 +334,7 @@
         draw: function() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Sky is handled by CSS background-color on wrapper in React, but let's paint it just in case
+            // Sky
             ctx.fillStyle = "#87CEEB"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -349,7 +348,7 @@
                 ctx.fill();
             });
 
-            // Draw Hills (Dynamic width)
+            // Draw Hills
             ctx.fillStyle = "#90EE90"; 
             ctx.beginPath();
             ctx.moveTo(0, canvas.height - CONFIG.groundHeight);
@@ -397,10 +396,10 @@
         if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke(); }
     }
 
+    // --- GAME CONTROL ---
+
     function startGame() {
-        if(sounds.score.context && sounds.score.context.state === 'suspended') {
-            sounds.score.context.resume();
-        }
+        // Removed the AudioContext check that was causing the crash
         bird.y = 300;
         bird.velocity = 0;
         pipes.items = [];
